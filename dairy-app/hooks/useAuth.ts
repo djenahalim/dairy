@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface User {
@@ -116,7 +116,7 @@ export function useAuth() {
     }
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('dairy-token');
     localStorage.removeItem('dairy-user');
     setState({
@@ -127,11 +127,12 @@ export function useAuth() {
     if (router) {
       router.push('/auth');
     }
-  };
+  }, [router]);
 
-  const getToken = () => {
+  // Stable reference - reads from localStorage directly, no deps
+  const getToken = useCallback(() => {
     return localStorage.getItem('dairy-token');
-  };
+  }, []);
 
   return {
     ...state,

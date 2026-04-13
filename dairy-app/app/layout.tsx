@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Dairy App",
-  description: "A beautiful diary application for recording your memories",
+  title: "My Diary",
+  description: "Your personal space to reflect and remember",
 };
 
 export default function RootLayout({
@@ -17,9 +17,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-red-50">
-          {children}
-        </div>
+        {children}
       </body>
     </html>
   );
