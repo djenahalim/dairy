@@ -1,4 +1,4 @@
-// File: /Users/halim/Desktop/cline/dairy-app/app/api/auth/register/route.ts
+// File: /Users/personal/Desktop/younie/dairy-app/app/api/auth/register/route.ts
 import * as entry from '../../../../../../app/api/auth/register/route.js'
 import type { NextRequest } from 'next/server.js'
 
