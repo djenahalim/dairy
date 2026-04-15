@@ -474,6 +474,96 @@ body {
 .save-btn:hover   { color: #16a34a; background: #dcfce7; }
 
 /* ═══════════════════════════════════════════════════════════════
+   ENTRY INPUT TABS  (Text / Record Audio)
+═══════════════════════════════════════════════════════════════ */
+
+.entry-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+}
+
+.entry-tab-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border: none;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'Inter', sans-serif;
+  font-size: .88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all .18s;
+}
+
+.entry-tab-btn:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.entry-tab-btn--active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+
+.entry-tab-btn--active:hover {
+  background: var(--accent-hover);
+  color: #fff;
+}
+
+/* ── Audio tab panels ── */
+
+.audio-tab-content {
+  margin-bottom: 4px;
+}
+
+.audio-start-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 36px 24px;
+  background: var(--surface-alt);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.audio-hint {
+  font-family: 'Inter', sans-serif;
+  font-size: .9rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.audio-ready-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+
+[data-theme="dark"] .audio-ready-panel {
+  background: #14291e;
+  border-color: #166534;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    AUDIO / RECORDING
 ═══════════════════════════════════════════════════════════════ */
 

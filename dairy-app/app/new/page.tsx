@@ -11,9 +11,9 @@ import {
   X,
   Save,
   LogOut,
-  Settings,
   User,
   ArrowLeft,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -46,6 +46,7 @@ export default function CreateEventPage() {
   const [displayName, setDisplayName] = useState('');
   const [theme, setTheme] = useState<'light' | 'dark' | 'purple'>('light');
   const [saved, setSaved] = useState(false);
+  const [activeTab, setActiveTab] = useState<'text' | 'audio'>('text');
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -60,7 +61,7 @@ export default function CreateEventPage() {
       return;
     }
     if (user && !initialLoadDone.current) {
-      setDisplayName((user as any).display_name || user.username || 'there');
+      setDisplayName(user.username || (user as any).display_name || 'there');
       setTheme(((user as any).theme as 'light' | 'dark' | 'purple') || 'light');
       initialLoadDone.current = true;
     }
@@ -76,7 +77,8 @@ export default function CreateEventPage() {
   // ── Add event ───────────────────────────────────────────────────────────────
 
   const handleAddEvent = async () => {
-    if (!newEventText.trim() && !audioBlob) return;
+    if (activeTab === 'text' && !newEventText.trim()) return;
+    if (activeTab === 'audio' && !audioBlob) return;
     const token = getToken();
     if (!token) return;
 
@@ -95,7 +97,7 @@ export default function CreateEventPage() {
       const evRes = await fetch(`/api/memories/${memData.id}/events`, {
         method: 'POST',
         headers: authHeaders(token),
-        body: JSON.stringify({ text: newEventText.trim() || '(audio note)' }),
+        body: JSON.stringify({ text: activeTab === 'text' ? newEventText.trim() : '(audio note)' }),
       });
       if (!evRes.ok) throw new Error('Failed to create event');
 
@@ -138,6 +140,16 @@ export default function CreateEventPage() {
     }
   };
 
+  // ── Switch tab ──────────────────────────────────────────────────────────────
+
+  const handleTabSwitch = (tab: 'text' | 'audio') => {
+    // Stop recording if switching away from audio tab
+    if (tab !== 'audio' && isRecording) {
+      stopRecording();
+    }
+    setActiveTab(tab);
+  };
+
   // ── Loading ─────────────────────────────────────────────────────────────────
 
   if (isLoading) {
@@ -153,6 +165,8 @@ export default function CreateEventPage() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+  const canSave = activeTab === 'text' ? !!newEventText.trim() : !!audioBlob;
 
   return (
     <div className="diary-app" data-theme={theme}>
@@ -227,48 +241,77 @@ export default function CreateEventPage() {
               ))}
             </div>
 
-            {/* Diary paper textarea */}
-            <div className="diary-paper">
-              <div className="paper-lines" aria-hidden="true" />
-              <textarea
-                value={newEventText}
-                onChange={(e) => setNewEventText(e.target.value)}
-                placeholder="Dear diary, today I…"
-                className="diary-textarea paper-textarea"
-                rows={8}
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddEvent();
-                }}
-              />
+            {/* ── Input tabs ── */}
+            <div className="entry-tabs">
+              <button
+                className={`entry-tab-btn${activeTab === 'text' ? ' entry-tab-btn--active' : ''}`}
+                onClick={() => handleTabSwitch('text')}
+              >
+                <FileText size={15} />
+                Text
+              </button>
+              <button
+                className={`entry-tab-btn${activeTab === 'audio' ? ' entry-tab-btn--active' : ''}`}
+                onClick={() => handleTabSwitch('audio')}
+              >
+                <Mic size={15} />
+                Record Audio
+              </button>
             </div>
 
-            {/* Audio controls */}
-            {isRecording ? (
-              <div className="recording-bar">
-                <span className="rec-dot" />
-                <span>Recording…</span>
-                <button className="btn btn-ghost btn-sm" onClick={stopRecording}>
-                  <Square size={14} /> Stop
-                </button>
+            {/* ── Text tab content ── */}
+            {activeTab === 'text' && (
+              <div className="diary-paper">
+                <div className="paper-lines" aria-hidden="true" />
+                <textarea
+                  value={newEventText}
+                  onChange={(e) => setNewEventText(e.target.value)}
+                  placeholder="Dear diary, today I…"
+                  className="diary-textarea paper-textarea"
+                  rows={8}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddEvent();
+                  }}
+                />
               </div>
-            ) : (
-              <div className="action-row">
-                <button className="btn btn-ghost btn-sm" onClick={startRecording}>
-                  <Mic size={15} /> Record Audio
-                </button>
-                {audioBlob && (
-                  <span className="audio-ready">
-                    🎙 Audio ready
-                    <button className="icon-btn" onClick={() => setAudioBlob(null)}>
-                      <X size={13} />
+            )}
+
+            {/* ── Audio tab content ── */}
+            {activeTab === 'audio' && (
+              <div className="audio-tab-content">
+                {isRecording ? (
+                  <div className="recording-bar">
+                    <span className="rec-dot" />
+                    <span>Recording…</span>
+                    <button className="btn btn-ghost btn-sm" onClick={stopRecording}>
+                      <Square size={14} /> Stop
                     </button>
-                  </span>
+                  </div>
+                ) : audioBlob ? (
+                  <div className="audio-ready-panel">
+                    <span className="audio-ready">
+                      🎙 Audio ready
+                    </span>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setAudioBlob(null)}>
+                      <X size={13} /> Remove
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={startRecording}>
+                      <Mic size={14} /> Re-record
+                    </button>
+                  </div>
+                ) : (
+                  <div className="audio-start-panel">
+                    <p className="audio-hint">Tap the button below to start recording your voice note.</p>
+                    <button className="btn btn-primary" onClick={startRecording}>
+                      <Mic size={16} /> Start Recording
+                    </button>
+                  </div>
                 )}
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
               <button
                 className="btn btn-ghost"
                 onClick={() => router.push('/')}
@@ -279,7 +322,7 @@ export default function CreateEventPage() {
               <button
                 className="btn btn-primary btn-full"
                 onClick={handleAddEvent}
-                disabled={isSaving || (!newEventText.trim() && !audioBlob)}
+                disabled={isSaving || !canSave}
               >
                 <Save size={16} />
                 {isSaving ? 'Saving…' : 'Save Entry'}

@@ -189,7 +189,7 @@ export default function HomePage() {
       return;
     }
     if (user && !initialLoadDone.current) {
-      setDisplayName((user as any).display_name || user.username || 'there');
+      setDisplayName(user.username || (user as any).display_name || 'there');
       setTheme(((user as any).theme as 'light' | 'dark' | 'purple') || 'light');
       initialLoadDone.current = true;
       loadMemories();
