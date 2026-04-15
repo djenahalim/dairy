@@ -7,18 +7,16 @@ import {
   BookOpen,
   Plus,
   Mic,
-  Square,
-  X,
+  Play,
+  Pause,
   Trash2,
   Edit,
   Save,
-  Play,
-  Pause,
   LogOut,
-  Settings,
   User,
-  ChevronRight,
   Clock,
+  Settings,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -54,7 +52,7 @@ function authHeaders(token: string) {
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 }
 
-// ─── Event Item (read-only with edit/delete) ──────────────────────────────────
+// ─── Event Item ───────────────────────────────────────────────────────────────
 
 function EventItem({
   event: ev,
@@ -130,23 +128,17 @@ function EventItem({
   );
 }
 
-// ─── Main Home Page ───────────────────────────────────────────────────────────
+// ─── Main Landing Page ────────────────────────────────────────────────────────
 
 export default function HomePage() {
   const router = useRouter();
   const { isAuthenticated, isLoading, logout, user, getToken } = useAuth();
 
   const [memories, setMemories] = useState<Memory[]>([]);
-  const [selectedEmotion, setSelectedEmotion] = useState('happy');
-  const [newEventText, setNewEventText] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [theme, setTheme] = useState<'light' | 'dark' | 'purple'>('light');
+  const [loadingEntries, setLoadingEntries] = useState(false);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
   const initialLoadDone = useRef(false);
 
   // ── Load memories ───────────────────────────────────────────────────────────
@@ -154,6 +146,7 @@ export default function HomePage() {
   const loadMemories = useCallback(async () => {
     const token = getToken();
     if (!token) return;
+    setLoadingEntries(true);
     try {
       const res = await fetch('/api/memories', { headers: authHeaders(token) });
       if (!res.ok) return;
@@ -182,6 +175,8 @@ export default function HomePage() {
       setMemories(withEvents);
     } catch (err) {
       console.error('Failed to load memories', err);
+    } finally {
+      setLoadingEntries(false);
     }
   }, [getToken]);
 
@@ -207,42 +202,6 @@ export default function HomePage() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
-
-  // ── Add event ───────────────────────────────────────────────────────────────
-
-  const handleAddEvent = async () => {
-    if (!newEventText.trim() && !audioBlob) return;
-    const token = getToken();
-    if (!token) return;
-
-    setIsSaving(true);
-    try {
-      const dateKey = format(new Date(), 'yyyy-MM-dd');
-
-      const memRes = await fetch('/api/memories', {
-        method: 'POST',
-        headers: authHeaders(token),
-        body: JSON.stringify({ date: dateKey, emotion: selectedEmotion }),
-      });
-      if (!memRes.ok) throw new Error('Failed to create memory');
-      const memData = await memRes.json();
-
-      const evRes = await fetch(`/api/memories/${memData.id}/events`, {
-        method: 'POST',
-        headers: authHeaders(token),
-        body: JSON.stringify({ text: newEventText.trim() || '(audio note)' }),
-      });
-      if (!evRes.ok) throw new Error('Failed to create event');
-
-      setNewEventText('');
-      setAudioBlob(null);
-      await loadMemories();
-    } catch (err) {
-      console.error('Failed to add event', err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   // ── Delete event ────────────────────────────────────────────────────────────
 
@@ -277,45 +236,17 @@ export default function HomePage() {
     }
   };
 
-  // ── Audio ───────────────────────────────────────────────────────────────────
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      audioChunksRef.current = [];
-      mediaRecorderRef.current.ondataavailable = (e) => audioChunksRef.current.push(e.data);
-      mediaRecorderRef.current.onstop = () => {
-        setAudioBlob(new Blob(audioChunksRef.current, { type: 'audio/webm' }));
-        stream.getTracks().forEach((t) => t.stop());
-      };
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-    } catch (err) {
-      console.error('Microphone error:', err);
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-
   // ── Derived data ────────────────────────────────────────────────────────────
 
-  // All events across all memories, sorted newest first (by memory date then event order)
+  // All events across all memories, sorted newest first
   const allEvents = memories
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date))
-    .flatMap((m) =>
-      m.events.map((ev) => ({ ...ev, memory: m }))
-    );
+    .flatMap((m) => m.events.map((ev) => ({ ...ev, memory: m })));
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const todayEvents = allEvents.filter((e) => e.memory.date === todayStr);
-  const recentEvents = allEvents.filter((e) => e.memory.date !== todayStr).slice(0, 10);
+  const pastEvents = allEvents.filter((e) => e.memory.date !== todayStr).slice(0, 15);
 
   // ── Loading ─────────────────────────────────────────────────────────────────
 
@@ -343,13 +274,6 @@ export default function HomePage() {
             <span className="brand-name">My Diary</span>
           </div>
           <nav className="header-nav">
-            <button
-              className="nav-icon-btn"
-              onClick={() => router.push('/new')}
-              title="Full diary view"
-            >
-              <Settings size={20} />
-            </button>
             <div className="user-chip">
               <User size={16} />
               <span>{displayName}</span>
@@ -366,86 +290,30 @@ export default function HomePage() {
       </header>
 
       <main className="diary-main">
-        {/* ── Greeting ── */}
+        {/* ── Greeting banner ── */}
         <div className="date-banner">
           <p className="date-day">{greeting}, {displayName} 👋</p>
           <p className="date-full">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
         </div>
 
-        {/* ── Add Event Section ── */}
-        <section className="diary-section">
-          <h2 className="section-title">
-            <Plus size={18} />
-            Add a new entry
-          </h2>
+        {/* ── Add Entry CTA ── */}
+        <button
+          className="btn btn-primary btn-full add-entry-cta"
+          onClick={() => router.push('/new')}
+        >
+          <Plus size={20} />
+          Add a new entry
+        </button>
 
-          {/* Emotion picker */}
-          <div className="emotion-grid" style={{ marginBottom: '16px' }}>
-            {EMOTIONS.map((em) => (
-              <button
-                key={em.name}
-                onClick={() => setSelectedEmotion(em.name)}
-                className={`emotion-btn ${selectedEmotion === em.name ? 'emotion-btn--active' : ''}`}
-                style={selectedEmotion === em.name ? { background: em.color, borderColor: em.border } : {}}
-              >
-                <span className="em-emoji">{em.emoji}</span>
-                <span className="em-name">{em.name}</span>
-              </button>
-            ))}
+        {/* ── Loading entries ── */}
+        {loadingEntries && (
+          <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)', fontFamily: 'Inter, sans-serif', fontSize: '.9rem' }}>
+            Loading entries…
           </div>
-
-          {/* Diary paper textarea */}
-          <div className="diary-paper">
-            <div className="paper-lines" aria-hidden="true" />
-            <textarea
-              value={newEventText}
-              onChange={(e) => setNewEventText(e.target.value)}
-              placeholder="Dear diary, today I…"
-              className="diary-textarea paper-textarea"
-              rows={5}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddEvent();
-              }}
-            />
-          </div>
-
-          {/* Audio controls */}
-          {isRecording ? (
-            <div className="recording-bar">
-              <span className="rec-dot" />
-              <span>Recording…</span>
-              <button className="btn btn-ghost btn-sm" onClick={stopRecording}>
-                <Square size={14} /> Stop
-              </button>
-            </div>
-          ) : (
-            <div className="action-row">
-              <button className="btn btn-ghost btn-sm" onClick={startRecording}>
-                <Mic size={15} /> Record Audio
-              </button>
-              {audioBlob && (
-                <span className="audio-ready">
-                  🎙 Audio ready
-                  <button className="icon-btn" onClick={() => setAudioBlob(null)}>
-                    <X size={13} />
-                  </button>
-                </span>
-              )}
-            </div>
-          )}
-
-          <button
-            className="btn btn-primary btn-full"
-            onClick={handleAddEvent}
-            disabled={isSaving || (!newEventText.trim() && !audioBlob)}
-          >
-            <Plus size={16} />
-            {isSaving ? 'Saving…' : 'Save Entry'}
-          </button>
-        </section>
+        )}
 
         {/* ── Today's Entries ── */}
-        {todayEvents.length > 0 && (
+        {!loadingEntries && todayEvents.length > 0 && (
           <section className="diary-section">
             <h2 className="section-title">
               <Clock size={17} />
@@ -466,23 +334,21 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ── Recent Past Entries ── */}
-        {recentEvents.length > 0 && (
+        {/* ── Past Entries ── */}
+        {!loadingEntries && pastEvents.length > 0 && (
           <section className="diary-section">
             <h2 className="section-title">
               <BookOpen size={17} />
               Recent entries
             </h2>
             <div className="events-list">
-              {recentEvents.map((ev) => {
+              {pastEvents.map((ev) => {
                 const em = EMOTIONS.find((e) => e.name === ev.memory.emotion);
                 return (
                   <div key={`${ev.memory.id}-${ev.id}`} className="home-recent-item">
                     <div className="recent-meta">
                       <span className="recent-date">
-                        {isSameDay(parseISO(ev.memory.date), new Date())
-                          ? 'Today'
-                          : format(parseISO(ev.memory.date), 'MMM d, yyyy')}
+                        {format(parseISO(ev.memory.date), 'MMM d, yyyy')}
                       </span>
                       <span
                         className="recent-emotion"
@@ -505,24 +371,21 @@ export default function HomePage() {
         )}
 
         {/* ── Empty state ── */}
-        {allEvents.length === 0 && (
+        {!loadingEntries && allEvents.length === 0 && (
           <section className="diary-section empty-state">
             <BookOpen size={48} className="empty-icon" />
-            <p>Your diary is empty. Write your first entry above!</p>
+            <p style={{ fontFamily: 'Georgia, serif', color: 'var(--text-muted)' }}>
+              Your diary is empty.
+            </p>
+            <button
+              className="btn btn-primary"
+              onClick={() => router.push('/new')}
+            >
+              <Plus size={16} />
+              Write your first entry
+            </button>
           </section>
         )}
-
-        {/* ── Link to full diary ── */}
-        <div style={{ textAlign: 'center', marginTop: '8px' }}>
-          <button
-            className="btn btn-ghost"
-            onClick={() => router.push('/new')}
-            style={{ gap: '8px' }}
-          >
-            Open full diary view
-            <ChevronRight size={16} />
-          </button>
-        </div>
       </main>
     </div>
   );

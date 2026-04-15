@@ -2,7 +2,6 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/api/memories": "pages/api/memories.js",
   "/api/memories/[memoryId]/events": "pages/api/memories/[memoryId]/events.js",
-  "/api/memories/[memoryId]/events/[eventId]": "pages/api/memories/[memoryId]/events/[eventId].js"
+  "/api/memories": "pages/api/memories.js"
 }
