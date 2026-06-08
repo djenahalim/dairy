@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { format, parseISO, isSameDay } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import {
   BookOpen,
   Plus,
@@ -16,6 +16,14 @@ import {
   User,
   Clock,
   Settings,
+  X,
+  Menu,
+  Star,
+  Lock,
+  Share2,
+  Bell,
+  HelpCircle,
+  Globe,
   ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
@@ -125,6 +133,140 @@ function EventItem({
         </button>
       </div>
     </div>
+  );
+}
+
+// ─── Burger Menu ──────────────────────────────────────────────────────────────
+
+function BurgerMenu({
+  displayName,
+  onLogout,
+}: {
+  displayName: string;
+  onLogout: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Prevent body scroll when open
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
+  const close = () => setOpen(false);
+
+  const menuItems = [
+    {
+      icon: <Star size={18} />,
+      label: 'Upgrade to Pro',
+      accent: true,
+      onClick: () => { close(); alert('Pro upgrade coming soon!'); },
+    },
+    {
+      icon: <Lock size={18} />,
+      label: 'Diary Lock',
+      onClick: () => { close(); alert('Diary lock coming soon!'); },
+    },
+    {
+      icon: <Share2 size={18} />,
+      label: 'Share App',
+      onClick: () => {
+        close();
+        if (navigator.share) {
+          navigator.share({ title: 'My Diary', url: window.location.origin });
+        } else {
+          navigator.clipboard.writeText(window.location.origin);
+          alert('Link copied to clipboard!');
+        }
+      },
+    },
+    {
+      icon: <Settings size={18} />,
+      label: 'Settings',
+      onClick: () => { close(); alert('Settings coming soon!'); },
+    },
+    {
+      icon: <Bell size={18} />,
+      label: 'Notifications',
+      onClick: () => { close(); alert('Notifications coming soon!'); },
+    },
+    {
+      icon: <HelpCircle size={18} />,
+      label: 'Help Center',
+      onClick: () => { close(); alert('Help center coming soon!'); },
+    },
+    {
+      icon: <Globe size={18} />,
+      label: 'Language',
+      onClick: () => { close(); alert('Language settings coming soon!'); },
+    },
+    {
+      icon: <LogOut size={18} />,
+      label: 'Logout',
+      danger: true,
+      onClick: () => { close(); onLogout(); },
+    },
+  ];
+
+  return (
+    <>
+      {/* Burger button */}
+      <button
+        className="nav-icon-btn burger-btn"
+        onClick={() => setOpen(true)}
+        title="Menu"
+        aria-label="Open menu"
+      >
+        <Menu size={22} />
+      </button>
+
+      {/* Backdrop */}
+      {open && (
+        <div className="drawer-backdrop" onClick={close} aria-hidden="true" />
+      )}
+
+      {/* Drawer */}
+      <div className={`drawer${open ? ' drawer--open' : ''}`} role="dialog" aria-modal="true" aria-label="Navigation menu">
+        {/* Drawer header */}
+        <div className="drawer-header">
+          <div className="drawer-user">
+            <div className="drawer-avatar">
+              <User size={20} />
+            </div>
+            <div>
+              <p className="drawer-username">{displayName}</p>
+              <p className="drawer-tagline">My Diary</p>
+            </div>
+          </div>
+          <button className="drawer-close" onClick={close} aria-label="Close menu">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Menu items */}
+        <nav className="drawer-nav">
+          {menuItems.map((item) => (
+            <button
+              key={item.label}
+              className={`drawer-item${item.accent ? ' drawer-item--accent' : ''}${item.danger ? ' drawer-item--danger' : ''}`}
+              onClick={item.onClick}
+            >
+              <span className="drawer-item-icon">{item.icon}</span>
+              <span className="drawer-item-label">{item.label}</span>
+              <ChevronRight size={15} className="drawer-item-chevron" />
+            </button>
+          ))}
+        </nav>
+      </div>
+    </>
   );
 }
 
@@ -238,7 +380,6 @@ export default function HomePage() {
 
   // ── Derived data ────────────────────────────────────────────────────────────
 
-  // All events across all memories, sorted newest first
   const allEvents = memories
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -264,6 +405,8 @@ export default function HomePage() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
+  const handleLogout = () => { logout(); router.push('/auth'); };
+
   return (
     <div className="diary-app" data-theme={theme}>
       {/* ── Header ── */}
@@ -278,13 +421,7 @@ export default function HomePage() {
               <User size={16} />
               <span>{displayName}</span>
             </div>
-            <button
-              className="nav-icon-btn logout-btn"
-              onClick={() => { logout(); router.push('/auth'); }}
-              title="Logout"
-            >
-              <LogOut size={20} />
-            </button>
+            <BurgerMenu displayName={displayName} onLogout={handleLogout} />
           </nav>
         </div>
       </header>
